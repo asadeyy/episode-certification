@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
-  Box,
   InputGroup,
   InputLeftAddon,
   Input,
@@ -13,14 +12,28 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { FaUser, FaRobot } from "react-icons/fa";
+import Link from "next/link";
 
-export default function Home() {
+export default function CollectPhase() {
   const [apiKey, setApiKey] = useState("");
   const [userInput, setUserInput] = useState("");
   const [messages, setMessages] = useState<{ role: string; content: string }[]>(
     []
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [finished, setFinished] = useState(false);
+
+  // 生成AIが最後に出力するjsonを受け取る変数
+  const [collectEpisode, setCollectEpisode] = useState("");
+
+  // 次のページに値を渡すためのquery作成
+  function query() {
+    const query = {
+      key: apiKey,
+      content: collectEpisode,
+    };
+    return query;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +48,7 @@ export default function Home() {
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction:
-        'あなたはインタビュアーです。エピソードベースの印象深い出来事について、知人や友人が推測できないようなセキュリティ質問を作成するために、質問をしています。質問内容には，回答しやすいように回答例も提示してください。日本語で一質問ずつ質問してください。回答が不十分な場合は、同じ質問についてもう一度質問してください。3つのエピソードとその深掘りを入手することができたら、質問を停止し、{category: "", [{question: "answer}, {"question": "answer"}, {"question": "answer"}]}{category2:"", [{"question":"answer"}]}のようなjsonのみの形式ですべてのデータを出力してください。なお，セキュリティ質問を収集する以外の会話をしてはいけません．',
+        'あなたはインタビュアーです。エピソードベースの印象深い出来事について、知人や友人が推測できないようなセキュリティ質問を作成するために、質問をしています。質問内容には，回答しやすいように具体的な回答例も提示してください。また，いつ頃のことか，小学生か，中学生か，大学生の頃かなども含めてください．日本語で一質問ずつ質問してください。回答が不十分な場合は、同じ質問についてさらに深掘りした質問をしてください．最大でも3回までしか深堀りをしてはいけません。将来回答内容が変わりそうなもの，例えば記憶に残った映画などの質問はセキュリティ的に十分ではありません．大怪我や病院に運ばれたなどのエピソードはインパクトもあり，セキュリティ的に良いかもしれません．関わった友達などの人物の固有名詞はセキュリティ的にも良いのでできる限り収集してください．いつ頃に出来事があったかの詳細な問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたとユーザーのやり取りを回答の最後に含めているので，参照しながら似た質問を絶対に繰り返さないようにしてください．**似た質問や同じ質問は絶対しないでください**．3つのエピソードとその深掘りを得ることができたら、質問を停止し、{"category": "", [{question: "answer}, {"question": "answer"}, {"question": "answer"}]}{"category2":"", [{"question":"answer"}]}のようなjsonのみの形式で今までの履歴データと回答データを含めてすべてのデータを出力してください。なお，セキュリティ質問を収集する以外の会話をしてはいけません．',
     });
 
     const generationConfig: any = {
@@ -47,13 +60,29 @@ export default function Home() {
     };
 
     const newMessages = [...messages, { role: "user", content: userInput }];
+    console.log(newMessages);
     setMessages(newMessages);
     setUserInput("");
 
     try {
-      const result = await model.generateContent(userInput, generationConfig);
+      const result = await model.generateContent(
+        userInput +
+          "\nここまでがユーザーの回答です．これ以降は過去の履歴です．/でuserとmodelの回答が切り替わっています．```" +
+          newMessages.map((msg) => msg.content).join("/") +
+          "```",
+        generationConfig
+      );
       const response = await result.response;
-      const text = response.text();
+      let text = response.text();
+      // 質問が終了したら分岐
+      if (text.includes('{"category')) {
+        setCollectEpisode(text);
+        console.log(collectEpisode);
+        text = "ご協力ありがとうございました。エピソードの収集が完了しました。";
+        setMessages([...newMessages, { role: "model", content: text }]);
+        setFinished(true);
+        return;
+      }
       setMessages([...newMessages, { role: "model", content: text }]);
     } catch (error: any) {
       // API キーが無効な場合のエラー処理
@@ -133,7 +162,11 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </VStack>
 
-        <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ width: "100%" }}
+          className={`${finished ? "hidden" : "block"}`}
+        >
           <HStack>
             <textarea
               placeholder="メッセージを入力"
@@ -151,6 +184,16 @@ export default function Home() {
             </Button>
           </HStack>
         </form>
+        <div className={`${finished ? "block" : "hidden"}`}>
+          <button
+            type="button"
+            className="text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 focus:outline-none dark:focus:ring-red-800 m-10"
+          >
+            <Link href={{ pathname: "/certificate-phase", query: query() }}>
+              認証体験に進む
+            </Link>
+          </button>
+        </div>
       </VStack>
     </div>
   );
