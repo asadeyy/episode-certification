@@ -1,8 +1,8 @@
 import Link from "next/link";
 export default function Home() {
   return (
-    <main className="max-w-xl m-20 md:max-w-4xl md:m-40">
-      <div className="flex justify-center items-center ">
+    <main className="flex justify-center items-center">
+      <div className="max-w-xl m-20 md:max-w-4xl md:m-40">
         <div className="text-lg md:text-2xl ">
           このサイトでは，episode-certificationアプリを体験することができます．
           <br />
