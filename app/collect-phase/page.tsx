@@ -1,6 +1,8 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
+
 import {
   InputGroup,
   InputLeftAddon,
@@ -23,14 +25,59 @@ export default function CollectPhase() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [finished, setFinished] = useState(false);
 
-  // 生成AIが最後に出力するjsonを受け取る変数
-  const [collectEpisode, setCollectEpisode] = useState("");
+  // 会話のログを格納
+  const [pastMessages, setPastMessages] = useState<
+    { role: string; content: string }[]
+  >([]);
+
+  // 質問の回数をカウント
+  const [questionCount, setQuestionCount] = useState(0);
+
+  // 質問リスト
+  const questionList = [
+    "ペットについて",
+    "家族について",
+    "海外旅行先",
+    "小学校について",
+    "中学校について",
+    "高校について",
+    "大学について",
+    "印象にあるバイト先について",
+    "大怪我したこと",
+    "実家について(場所など)",
+    "いとこについて",
+    "子供の頃憧れていた職業",
+    "小学校の頃の親友の名前",
+    "小学校の頃の自分のあだ名",
+    "中学校の頃の親友の名前",
+    "中学校の頃の自分のあだ名",
+    "高校の頃の親友の名前",
+    "高校の頃の自分のあだ名",
+    "大学の頃の親友の名前",
+    "大学の頃の自分のあだ名",
+    "小学校の頃の習い事",
+    "中学校の頃の習い事",
+    "高校の頃の習い事",
+  ];
+
+  // 選んだ質問を格納
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([
+    "ペットについて",
+  ]);
+  useEffect(() => {
+    console.log(selectedQuestions);
+  }, [selectedQuestions]);
 
   // 次のページに値を渡すためのquery作成
   function query() {
+    const formatedMessages = messages
+      .map((msg) => {
+        return `${msg.role}:${msg.content}`;
+      })
+      .join(",");
     const query = {
       key: apiKey,
-      content: collectEpisode,
+      content: formatedMessages,
     };
     return query;
   }
@@ -44,12 +91,48 @@ export default function CollectPhase() {
       return;
     }
 
+    // セーフティを外す
+    const safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+    ];
+
+    // 既に選択された質問を除いて，質問をランダムに一つ選ぶ
+    if (questionCount === 2) {
+      const question: string = questionList.filter(
+        (q) => !selectedQuestions.includes(q)
+      )[Math.floor(Math.random() * questionList.length)];
+      await setSelectedQuestions([...selectedQuestions, question]);
+    }
+
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
-      systemInstruction:
-        'あなたはインタビュアーです。エピソードベースの印象深い出来事について、知人や友人が推測できないようなセキュリティ質問を作成するために、質問をしています。質問内容には，回答しやすいように具体的な回答例も提示してください。また，いつ頃のことか，小学生か，中学生か，大学生の頃かなども含めてください．日本語で一質問ずつ質問してください。回答が不十分な場合は、同じ質問についてさらに深掘りした質問をしてください．最大でも3回までしか深堀りをしてはいけません。将来回答内容が変わりそうなもの，例えば記憶に残った映画などの質問はセキュリティ的に十分ではありません．大怪我や病院に運ばれたなどのエピソードはインパクトもあり，セキュリティ的に良いかもしれません．関わった友達などの人物の固有名詞はセキュリティ的にも良いのでできる限り収集してください．いつ頃に出来事があったかの詳細な問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたとユーザーのやり取りを回答の最後に含めているので，参照しながら似た質問を絶対に繰り返さないようにしてください．**似た質問や同じ質問は絶対しないでください**．3つのエピソードとその深掘りを得ることができたら、質問を停止し、{"category": "", [{question: "answer}, {"question": "answer"}, {"question": "answer"}]}{"category2":"", [{"question":"answer"}]}のようなjsonのみの形式で今までの履歴データと回答データを含めてすべてのデータを出力してください。なお，セキュリティ質問を収集する以外の会話をしてはいけません．',
+      systemInstruction: `あなたはセキュリティ質問を作るために質問しているインタビュアーです。エピソードベース過去の事実を質問をします。質問のお題は${
+        selectedQuestions[selectedQuestions.length - 1]
+      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．例えば，ペットであれば最初に飼ったペットから今まで飼ったことのあるペットの情報，名前や好物などを聞き出すなどしてください．質問内容には，回答しやすいように具体的な回答例も提示してください。日本語で一質問ずつ質問してください。何時ごろや住所や年齢などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたの質問を回答の最後に含めているので，参照しながら**同じ質問を絶対に繰り返さないようにしてください**．なお，インタビューに関係するもの以外の会話をしてはいけません．`,
+      safetySettings: safetySettings,
     });
+
+    console.log(
+      `あなたはインタビュアーです。エピソードベースの印象深い出来事やセキュリティ質問となり得る事実について、質問をします。質問のお題は${
+        selectedQuestions[selectedQuestions.length - 1]
+      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．質問内容には，回答しやすいように具体的な回答例も提示してください。同じお題については3回までしか質問できないので，十分な情報を得られるように質問を工夫してください．日本語で一質問ずつ質問してください。何時ごろや住所などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたとユーザーのやり取りを回答の最後に含めているので，参照しながら**同じ質問を絶対に繰り返さないようにしてください**．なお，インタビューに関係するもの以外の会話をしてはいけません．`
+    );
 
     const generationConfig: any = {
       temperature: 1,
@@ -60,30 +143,42 @@ export default function CollectPhase() {
     };
 
     const newMessages = [...messages, { role: "user", content: userInput }];
-    console.log(newMessages);
     setMessages(newMessages);
+    setPastMessages(newMessages);
+    console.log(pastMessages);
     setUserInput("");
 
     try {
       const result = await model.generateContent(
-        userInput +
-          "\nここまでがユーザーの回答です．これ以降は過去の履歴です．/でuserとmodelの回答が切り替わっています．```" +
-          newMessages.map((msg) => msg.content).join("/") +
-          "```",
+        "以下は過去の対話の履歴です．\n```" +
+          pastMessages +
+          "\n```\n 以下がユーザーの回答です\n" +
+          userInput +
+          "\n同じ質問をしていないか，出力する前に過去の対話の履歴と見比べてください．ない場合は気にせず出力してください.",
         generationConfig
       );
       const response = await result.response;
       let text = response.text();
-      // 質問が終了したら分岐
-      if (text.includes('{"category')) {
-        setCollectEpisode(text);
-        console.log(collectEpisode);
+      setQuestionCount(questionCount + 1);
+      console.log("質問カウント:" + questionCount);
+      console.log("質問リスト:" + selectedQuestions);
+
+      // 質問したリストの長さが3かつ，質問回数も2回の場合，終了
+      if (selectedQuestions.length > 4 && questionCount > 1) {
         text = "ご協力ありがとうございました。エピソードの収集が完了しました。";
         setMessages([...newMessages, { role: "model", content: text }]);
         setFinished(true);
+        console.log(messages);
         return;
       }
       setMessages([...newMessages, { role: "model", content: text }]);
+      setPastMessages([...pastMessages, { role: "model", content: text }]);
+
+      // カウントをリセット
+      if (questionCount === 2) {
+        setQuestionCount(0);
+        setPastMessages([]);
+      }
     } catch (error: any) {
       // API キーが無効な場合のエラー処理
       if (error.message.includes("unregistered callers")) {
@@ -106,7 +201,7 @@ export default function CollectPhase() {
       <VStack className="my-8 md:my-20 mx-8 max-w-4xl">
         <div className="flex items-center justify-center">
           <InputGroup>
-            <InputLeftAddon>API Key を入力：</InputLeftAddon>
+            <InputLeftAddon>Gemini API Key を入力：</InputLeftAddon>
             <Input
               id="apiKey"
               placeholder="API Keyを入力してください"
@@ -155,10 +250,32 @@ export default function CollectPhase() {
               }`}
             >
               {msg.role !== "user" && <FaRobot className="w-10 px-2" />}
-              <Text className="max-w-64 md:max-w-3xl">{msg.content}</Text>
+              <div className="flex flex-col">
+                <Text className="max-w-64 md:max-w-3xl">{msg.content}</Text>
+                <div className={`${msg.role !== "user" ? "block" : "hidden"}`}>
+                  <form onSubmit={handleSubmit}>
+                    <textarea hidden value="次の質問をして下さい" />
+                    <Button
+                      type="submit"
+                      className=" hover:underline text-blue-500"
+                      onClick={() => {
+                        setQuestionCount(0);
+                        setPastMessages([]);
+                        const question: string = questionList.filter(
+                          (q) => !selectedQuestions.includes(q)
+                        )[Math.floor(Math.random() * questionList.length)];
+                        setSelectedQuestions([...selectedQuestions, question]);
+                      }}
+                    >
+                      質問をスキップ
+                    </Button>
+                  </form>
+                </div>
+              </div>
               {msg.role === "user" && <FaUser className="w-10 px-2" />}
             </HStack>
           ))}
+
           <div ref={messagesEndRef} />
         </VStack>
 
