@@ -1,8 +1,9 @@
 import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="flex flex-col justify-center items-center">
-      <div className="max-w-xl m-20 md:max-w-4xl md:m-40">
+      <div className="max-w-xl m-10 md:max-w-4xl md:m-20">
         <div className="text-lg md:text-2xl ">
           このサイトでは，episode-certificationアプリを体験することができます．
           <br />
@@ -29,7 +30,13 @@ export default function Home() {
       <div className="flex justify-center items-center ">
         <button
           type="button"
-          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 m-10"
+          className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 focus:outline-none m-5"
+        >
+          <Link href={"/old-demo"}>従来の秘密の質問をやってみる</Link>
+        </button>
+        <button
+          type="button"
+          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 m-5"
         >
           <Link href={"/collect-phase"}>デモアプリを体験する</Link>
         </button>
