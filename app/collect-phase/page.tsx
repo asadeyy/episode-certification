@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, use } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 
@@ -30,8 +30,12 @@ export default function CollectPhase() {
     { role: string; content: string }[]
   >([]);
 
+  useEffect(() => {
+    console.log(pastMessages);
+  }, [pastMessages]);
+
   // 質問の回数をカウント
-  const [questionCount, setQuestionCount] = useState(0);
+  const [questionCount, setQuestionCount] = useState(1);
 
   // 質問リスト
   const questionList = [
@@ -48,13 +52,10 @@ export default function CollectPhase() {
     "いとこについて",
     "子供の頃憧れていた職業",
     "小学校の頃の親友の名前",
-    "小学校の頃の自分のあだ名",
+    "あだ名",
     "中学校の頃の親友の名前",
-    "中学校の頃の自分のあだ名",
     "高校の頃の親友の名前",
-    "高校の頃の自分のあだ名",
     "大学の頃の親友の名前",
-    "大学の頃の自分のあだ名",
     "小学校の頃の習い事",
     "中学校の頃の習い事",
     "高校の頃の習い事",
@@ -124,18 +125,12 @@ export default function CollectPhase() {
       model: "gemini-1.5-flash",
       systemInstruction: `あなたはセキュリティ質問を作るために質問しているインタビュアーです。エピソードベース過去の事実を質問をします。質問のお題は${
         selectedQuestions[selectedQuestions.length - 1]
-      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．例えば，ペットであれば最初に飼ったペットから今まで飼ったことのあるペットの情報，名前や好物などを聞き出すなどしてください．質問内容には，回答しやすいように具体的な回答例も提示してください。日本語で一質問ずつ質問してください。何時ごろや住所や年齢などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたの質問を回答の最後に含めているので，参照しながら**同じ質問を絶対に繰り返さないようにしてください**．なお，インタビューに関係するもの以外の会話をしてはいけません．`,
+      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．例えば，ペットであれば種類や名前や好物などを聞き出すなどしてください．質問内容には，回答しやすいように具体的な回答例も提示してください。日本語で一質問ずつ質問してください。何時ごろや住所や年齢などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたの質問を回答の最後に含めているので，参照しながら同じ質問を絶対に繰り返さないようにしてください．なお，インタビューに関係するもの以外の会話をしてはいけません．`,
       safetySettings: safetySettings,
     });
 
-    console.log(
-      `あなたはインタビュアーです。エピソードベースの印象深い出来事やセキュリティ質問となり得る事実について、質問をします。質問のお題は${
-        selectedQuestions[selectedQuestions.length - 1]
-      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．質問内容には，回答しやすいように具体的な回答例も提示してください。同じお題については3回までしか質問できないので，十分な情報を得られるように質問を工夫してください．日本語で一質問ずつ質問してください。何時ごろや住所などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたとユーザーのやり取りを回答の最後に含めているので，参照しながら**同じ質問を絶対に繰り返さないようにしてください**．なお，インタビューに関係するもの以外の会話をしてはいけません．`
-    );
-
     const generationConfig: any = {
-      temperature: 1,
+      temperature: 1.5,
       topP: 0.95,
       topK: 64,
       maxOutputTokens: 8192,
@@ -148,12 +143,20 @@ export default function CollectPhase() {
     console.log(pastMessages);
     setUserInput("");
 
+    function promptInstruction(): string {
+      if (questionCount === 2) return "次の質問をしてください";
+      else return "ユーザーの回答を深堀りしてください";
+    }
+
+    console.log("modelへの指示" + promptInstruction());
+
     try {
       const result = await model.generateContent(
         "以下は過去の対話の履歴です．\n```" +
           pastMessages +
           "\n```\n 以下がユーザーの回答です\n" +
           userInput +
+          promptInstruction() +
           "\n同じ質問をしていないか，出力する前に過去の対話の履歴と見比べてください．ない場合は気にせず出力してください.",
         generationConfig
       );
