@@ -14,7 +14,8 @@ export default function Home() {
     "母親の旧姓",
     "両親が出会った街の名前",
     "憧れの職業は？",
-    "子供の頃のニックネームは？",
+    "一番好きな映画",
+    "好きな食べ物",
   ];
 
   const [hideform, sethideform] = useState(false);
