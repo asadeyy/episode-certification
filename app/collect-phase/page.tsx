@@ -138,6 +138,14 @@ export default function CollectPhase() {
     };
 
     const newMessages = [...messages, { role: "user", content: userInput }];
+
+    // userInputが空の場合は，messagesの最後のメッセージを削除する
+    if (userInput === "") {
+      const newMessages = [...messages];
+      newMessages.pop();
+      setMessages(newMessages);
+    }
+
     setMessages(newMessages);
     setPastMessages(newMessages);
     console.log(pastMessages);
