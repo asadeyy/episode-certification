@@ -1,14 +1,13 @@
 "use client";
-import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import { useToast, Spinner } from "@chakra-ui/react";
 
 export default function CertificatePhase() {
-  const searchParams = useSearchParams();
-  const key = searchParams.get("key");
-  const content = searchParams.get("content");
+  // ローカルストレージからデータを取得
+  const key = localStorage.getItem("apiKey");
+  const content = localStorage.getItem("content");
 
   // 何かエラーが起きた時に吐き出す
   const [error, setError] = useState("");

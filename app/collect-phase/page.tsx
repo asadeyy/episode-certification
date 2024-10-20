@@ -25,6 +25,12 @@ export default function CollectPhase() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [finished, setFinished] = useState(false);
 
+  // ローカルストレージに過去のデータが残っていたら消去
+  useEffect(() => {
+    localStorage.removeItem("apiKey");
+    localStorage.removeItem("content");
+  }, []);
+
   // 会話のログを格納
   const [pastMessages, setPastMessages] = useState<
     { role: string; content: string }[]
@@ -69,19 +75,18 @@ export default function CollectPhase() {
     console.log(selectedQuestions);
   }, [selectedQuestions]);
 
-  // 次のページに値を渡すためのquery作成
-  function query() {
-    const formatedMessages = messages
-      .map((msg) => {
-        return `${msg.role}:${msg.content}`;
-      })
-      .join(",");
-    const query = {
-      key: apiKey,
-      content: formatedMessages,
-    };
-    return query;
-  }
+  // finishedがtrueになったらローカルストレージに保存する
+  useEffect(() => {
+    if (finished) {
+      const formatedMessages = messages
+        .map((msg) => {
+          return `${msg.role}:${msg.content}`;
+        })
+        .join(",");
+      localStorage.setItem("apiKey", apiKey);
+      localStorage.setItem("content", formatedMessages);
+    }
+  }, [finished]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,9 +322,7 @@ export default function CollectPhase() {
             type="button"
             className="text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 focus:outline-none dark:focus:ring-red-800 m-10"
           >
-            <Link href={{ pathname: "/certificate-phase", query: query() }}>
-              認証体験に進む
-            </Link>
+            <Link href="/certificate-phase">認証体験に進む</Link>
           </button>
         </div>
       </VStack>
