@@ -37,7 +37,7 @@ export default function CollectPhase() {
   >([]);
 
   useEffect(() => {
-    console.log(pastMessages);
+    console.log("pastMessagesのログだよ", pastMessages);
   }, [pastMessages]);
 
   // 質問の回数をカウント
@@ -118,7 +118,7 @@ export default function CollectPhase() {
     ];
 
     // 既に選択された質問を除いて，質問をランダムに一つ選ぶ
-    if (questionCount === 2) {
+    if (questionCount === 3) {
       const question: string = questionList.filter(
         (q) => !selectedQuestions.includes(q)
       )[Math.floor(Math.random() * questionList.length)];
@@ -127,10 +127,10 @@ export default function CollectPhase() {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: `あなたはセキュリティ質問を作るために質問しているインタビュアーです。エピソードベース過去の事実を質問をします。質問のお題は${
+      model: "gemini-1.5-pro-latest",
+      systemInstruction: `あなたはセキュリティ質問を作るために質問しているインタビュアーです。エピソードベース過去の事実を質問をしています。質問のお題は${
         selectedQuestions[selectedQuestions.length - 1]
-      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．例えば，ペットであれば種類や名前や好物などを聞き出すなどしてください．質問内容には，回答しやすいように具体的な回答例も提示してください。日本語で一質問ずつ質問してください。何時ごろや住所や年齢などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたの質問を回答の最後に含めているので，参照しながら同じ質問を絶対に繰り返さないようにしてください．なお，インタビューに関係するもの以外の会話をしてはいけません．`,
+      }です．質問によっては，いつの頃なのか明記したり，状況によってカスタマイズや深堀りをしてください．例えば，ペットであれば種類や名前や好物などを聞き出すなどしてください。人であれば固有名詞を聞き出して下さい。質問内容には，回答しやすいように具体的な回答例も提示してください。日本語で一質問ずつ質問してください。何時ごろや住所や年齢などの細部の問いはしないでください．感想や個人の意見など，時期によって変化がありそうなものは聞かないでください．事実ベースで収集してください．過去のあなたの質問を回答の最後に含めているので，参照しながら同じ質問を絶対に繰り返さないようにしてください．なお，インタビューに関係するもの以外の会話をしてはいけません．`,
       safetySettings: safetySettings,
     });
 
@@ -145,19 +145,23 @@ export default function CollectPhase() {
     const newMessages = [...messages, { role: "user", content: userInput }];
 
     // userInputが空の場合は，messagesの最後のメッセージを削除する
-    if (userInput === "") {
-      const newMessages = [...messages];
-      newMessages.pop();
+    if (userInput == "") {
+      console.log("userInputが空です");
+      const beforeMessages = [...messages];
+      console.log("消す前", beforeMessages);
+      beforeMessages.pop();
+      console.log("消した後", beforeMessages);
+      setMessages(beforeMessages);
+      setPastMessages(beforeMessages);
+    } else {
       setMessages(newMessages);
+      setPastMessages(newMessages);
     }
-
-    setMessages(newMessages);
-    setPastMessages(newMessages);
     console.log(pastMessages);
     setUserInput("");
 
     function promptInstruction(): string {
-      if (questionCount === 2) return "次の質問をしてください";
+      if (questionCount === 3) return "次の質問をしてください";
       else return "ユーザーの回答を深堀りしてください";
     }
 
@@ -165,10 +169,11 @@ export default function CollectPhase() {
 
     try {
       const result = await model.generateContent(
-        "以下は過去の対話の履歴です．\n```" +
-          pastMessages +
-          "\n```\n 以下がユーザーの回答です\n" +
+        "以下は過去の質問の履歴です。同じ質問をしないで下さい。\n```" +
+          messages +
+          "\n```\n 以下が最後の質問に対するユーザーの回答です\n「" +
           userInput +
+          "」" +
           promptInstruction() +
           "\n同じ質問をしていないか，出力する前に過去の対話の履歴と見比べてください．ない場合は気にせず出力してください.",
         generationConfig
@@ -179,8 +184,8 @@ export default function CollectPhase() {
       console.log("質問カウント:" + questionCount);
       console.log("質問リスト:" + selectedQuestions);
 
-      // 質問したリストの長さが3かつ，質問回数も2回の場合，終了
-      if (selectedQuestions.length > 4 && questionCount > 1) {
+      // 質問したリストの長さが3かつ，質問回数も3回の場合，終了
+      if (selectedQuestions.length > 4 && questionCount > 2) {
         text = "ご協力ありがとうございました。エピソードの収集が完了しました。";
         setMessages([...newMessages, { role: "model", content: text }]);
         setFinished(true);
@@ -191,7 +196,7 @@ export default function CollectPhase() {
       setPastMessages([...pastMessages, { role: "model", content: text }]);
 
       // カウントをリセット
-      if (questionCount === 2) {
+      if (questionCount === 3) {
         setQuestionCount(0);
         setPastMessages([]);
       }

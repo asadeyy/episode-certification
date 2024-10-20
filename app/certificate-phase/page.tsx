@@ -45,45 +45,7 @@ export default function CertificatePhase() {
   };
 
   // gemini呼び出しのための関数
-  async function geminiCall(systemInstruction: string, prompt: string) {
-    const apiKey: string = key as string;
-    const genAI = new GoogleGenerativeAI(apiKey);
-
-    const generationConfig: any = {
-      temperature: 1,
-      topP: 0.95,
-      topK: 64,
-      maxOutputTokens: 8192,
-      responseMimeType: "text/plain",
-    };
-
-    // セーフティを外す
-    const safetySettings = [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-    ];
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: generationConfig,
-      systemInstruction: systemInstruction,
-      safetySettings: safetySettings,
-    });
-
+  async function geminiCall(prompt: string, model: any) {
     console.log("promptの確認：" + prompt);
 
     const result = await model.generateContent(prompt);
@@ -97,18 +59,60 @@ export default function CertificatePhase() {
 
   async function elementsCreate() {
     try {
+      // 生成AIの設定
+
+      const apiKey: string = key as string;
+      const genAI = new GoogleGenerativeAI(apiKey);
+
+      const generationConfig: any = {
+        temperature: 1,
+        topP: 0.95,
+        topK: 64,
+        maxOutputTokens: 8192,
+        responseMimeType: "text/plain",
+      };
+
+      // セーフティを外す
+      const safetySettings = [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+      ];
+
       // まずはデータフォーマットと選定
       const inputFormatString: string =
-        'あなたは、ユーザーが回答したデータを整形する人です。あなたに，AIが質問した内容とユーザーが回答した内容のデータを渡します。あなたは、そのデータに基づいて短い質問と短い回答を再構成必要があります。例えば、 [{question: "家族と行った人生の中で印象に残っている旅行の場所はどこか？", answer: "グアム"},{question: "家族と行った人生の中で印象に残っている旅行先で何をしたか？",answer: "ナマコを拾った"}] のように整形します。回答が「わからない」「覚えてない」「次の質問へ」などの求めている回答になっていないものや，個人の意見や感想に基づくものは、スキップして出力しないでください。ペットの質問などで，「いない」といった回答は採用しても良いです．感じたことや思ったことや気持ちは出力しないでください．できる限り多くの要素に分けて出力して下さい．ただし，いつ頃の出来事なのかは質問にちゃんと加え,できる限り単語か短い文章で出力してください．関連しており，片方の質問からもう片方の答えが想像できるようなものを選択してはいけません．回答がカンマや点，接続詞で区切られている場合は，分けて出力してください．ハルシネーションを起こさないで，入力されたデータに基づいて下さい．';
-      const formatedData = await geminiCall(
-        inputFormatString,
-        content as string
-      );
+        'あなたは、ユーザーが回答したデータを整形する人です。あなたに，AIが質問した内容とユーザーが回答した内容のデータを渡します。あなたは、そのデータに基づいて短い質問と短い回答を再構成必要があります。例えば、 [{question: "家族と行った人生の中で印象に残っている旅行の場所はどこか？", answer: "グアム"},{question: "家族と行った人生の中で印象に残っている旅行先で何をしたか？",answer: "ナマコを拾った"}] のように整形します。回答が「わからない」「覚えてない」「次の質問へ」などの求めている回答になっていないものや，個人の意見や感想に基づくものは、スキップして出力しないでください。「はい」「いいえ」などの答えを含むものは出力してはいけません。userの回答が「""」のものは消してください。感じたことや思ったことや気持ちは出力しないでください．できる限り多くの要素に分けて出力して下さい．ただし，いつ頃の出来事なのかは質問にちゃんと加え,できる限り単語か短い文章で出力してください。別の質問から別の質問の答えが想像できるような質問を作らないで下さい。質問は適宜わかりやすい形に変換して良いです。回答がカンマや点，接続詞で区切られている場合は，分けて出力してください．ハルシネーションを起こさないで，入力されたデータに基づいて下さい．';
+      const formatModel = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro-latest",
+        generationConfig: generationConfig,
+        systemInstruction: inputFormatString,
+        safetySettings: safetySettings,
+      });
+      const formatedData = await geminiCall(content as string, formatModel);
 
       // 次はデータ選定を行う
       const inputSelectString: string =
-        'あなたは，与えられたデータからセキュリティ質問として適切で強固な，質問と回答のセットを5つ選定する人です．出力は "[{"question":["質問1"],"answer":["回答1"]},{"question":["質問2"],"answer":["回答2"]}]" のようなJSON形式のみ許可します．また，**絶対に同じような質問(question)は含めてないでください**．回答が「わからない」「覚えてない」「いない」などの求めている回答になっていないものや，個人の意見や感想に基づくものは、スキップして出力しないでください。感じたことや気持ちを含むものは含めないでください．ハルシネーションを起こさないように慎重に出力してください．**入力されたデータ以外を出力しないでください**．**同じトピックの質問を繰り返さないで下さい**．ハルシネーションを起こさないで，入力されたデータから変更しないでださい．';
-      const selectedData = await geminiCall(inputSelectString, formatedData);
+        'あなたは，与えられたデータからセキュリティ質問として適切で強固な，質問と回答のセットを5つ選定する人です。例えば、名字の質問に対し、佐藤や鈴木などの、統計的推測がしやすいセットは選定しないで下さい。エピソードに基づいたセットを出力して下さい。出力は "[{"question":["質問1"],"answer":["回答1"]},{"question":["質問2"],"answer":["回答2"]}]" のようなJSON形式のみ許可します．また，**絶対に同じような質問(question)は含めてないでください**．回答が「わからない」「覚えてない」「いない」などの求めている回答になっていないものや，個人の意見や感想に基づくものは、スキップして出力しないでください。質問はわかりやすいように変更しても良いですが、回答だけは元のデータから変更しないで下さい。';
+      const selectModel = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: generationConfig,
+        systemInstruction: inputSelectString,
+        safetySettings: safetySettings,
+      });
+      const selectedData = await geminiCall(formatedData, selectModel);
       const replacedSelectedData = selectedData
         .replace("```", "")
         .replace("json", "")
@@ -124,14 +128,19 @@ export default function CertificatePhase() {
       // ダミーデータはカンマ区切りで出力されるので，それをepisodeElementのanswerの配列に追加する
       // answerの配列はランダムに並び替えられる
       const inputDummyString: string =
-        "あなたはダミーデータをカンマ(,)区切りで出力します。ユーザーは質問と正しい回答を入力するので、回答の**ダミー文9個をカンマ区切り形式で**出力して下さい。回答が文章であれば文章のダミーデータを，単語であれば単語のダミーデータを出力をしてください．文章のダミーデータはなるべく短い文章で作成してください．質問に対する回答ダミーデータを作成してください．意味が似ている回答ダミーデータのセットを絶対作ってはいけません．回答データと意味の異なるダミーデータを作成してください．出力は，hoge,hoge,hoge,hogeのような，カンマ区切りで，回答ダミーデータだけを出力して下さい．ダミーデータは必ずカンマ(,)で区切って出力してください．**ダミーデータは必ずカンマ(,)で区切って出力してください!!!!**．人の名前に「さん」「ちゃん」「くん」がついている場合のみ，ダミーデータにもつけて下さい．回答に漢字とひらがなの混合がある場合は，ダミーデータもそのように作成してください．";
-
+        "あなたはダミーデータをカンマ(,)区切りで出力します。ユーザーは質問と正しい回答を入力するので、回答の**ダミー文9個をカンマ区切り形式で**出力して下さい。回答が文章であれば文章のダミーデータを，単語であれば単語のダミーデータを出力をしてください．文章のダミーデータはなるべく短い文章で作成してください．質問に対する回答ダミーデータを作成してください．意味が似ている回答ダミーデータのセットを絶対作ってはいけません．回答データと意味の異なるダミーデータを作成してください．出力は，hoge,hoge,hoge,hogeのような，カンマ区切りで，回答ダミーデータだけを出力して下さい．ダミーデータは必ずカンマ(,)で区切って出力してください．**ダミーデータは必ずカンマ(,)で区切って出力してください!!!!**．人の名前に「さん」「ちゃん」「くん」がついている場合のみ，ダミーデータにもつけて下さい．回答に漢字、ひらがな、カタカナ、アルファベットの混合がある場合は，ダミーデータもそのように作成してください．";
+      const dummyModel = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: generationConfig,
+        systemInstruction: inputDummyString,
+        safetySettings: safetySettings,
+      });
       const correctAnswers: string[] = [];
       for (const episode of parsedJsonData) {
         correctAnswers.push(episode.answer[0]);
         const outputDummyData: string = await geminiCall(
-          inputDummyString,
-          "質問：" + episode.question[0] + "回答：" + episode.answer[0]
+          "質問：" + episode.question[0] + "回答：" + episode.answer[0],
+          dummyModel
         );
         const dummyData: string[] = outputDummyData.split(",");
         episode.answer.push(...dummyData);
