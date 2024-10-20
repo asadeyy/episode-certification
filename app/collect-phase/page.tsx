@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, use } from "react";
+import { useState, useRef, useEffect } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 
@@ -27,8 +27,8 @@ export default function CollectPhase() {
 
   // ローカルストレージに過去のデータが残っていたら消去
   useEffect(() => {
-    localStorage.removeItem("apiKey");
-    localStorage.removeItem("content");
+    window.localStorage.removeItem("apiKey");
+    window.localStorage.removeItem("content");
   }, []);
 
   // 会話のログを格納

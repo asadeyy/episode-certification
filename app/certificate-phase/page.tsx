@@ -5,9 +5,13 @@ import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import { useToast, Spinner } from "@chakra-ui/react";
 
 export default function CertificatePhase() {
-  // ローカルストレージからデータを取得
-  const key = localStorage.getItem("apiKey");
-  const content = localStorage.getItem("content");
+  let key: string | null = "";
+  let content: string | null = "";
+  if (typeof window !== "undefined") {
+    // ローカルストレージからデータを取得
+    key = window.localStorage.getItem("apiKey");
+    content = window.localStorage.getItem("content");
+  }
 
   // 何かエラーが起きた時に吐き出す
   const [error, setError] = useState("");
