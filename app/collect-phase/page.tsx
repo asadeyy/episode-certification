@@ -275,11 +275,12 @@ export default function CollectPhase() {
                 <Text className="max-w-64 md:max-w-3xl">{msg.content}</Text>
                 <div className={`${msg.role !== "user" ? "block" : "hidden"}`}>
                   <form onSubmit={handleSubmit}>
-                    <textarea hidden value="次の質問をして下さい" />
+                    <textarea hidden value="別の質問をして下さい" />
                     <Button
                       type="submit"
                       className=" hover:underline text-blue-500"
                       onClick={() => {
+                        setUserInput("別の質問をして下さい");
                         setQuestionCount(0);
                         setPastMessages([]);
                         const question: string = questionList.filter(
